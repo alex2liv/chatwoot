@@ -35,6 +35,15 @@ class ActionCableConnector extends BaseActionCableConnector {
       'account.cache_invalidated': this.onCacheInvalidate,
       'account.enrichment_completed': this.onEnrichmentCompleted,
       'copilot.message.created': this.onCopilotMessageCreated,
+      'internal_chat.channel.updated': this.onInternalChatChannelUpdated,
+      'internal_chat.message.created': this.onInternalChatMessageCreated,
+      'internal_chat.message.updated': this.onInternalChatMessageUpdated,
+      'internal_chat.message.deleted': this.onInternalChatMessageDeleted,
+      'internal_chat.typing_on': this.onInternalChatTypingOn,
+      'internal_chat.typing_off': this.onInternalChatTypingOff,
+      'internal_chat.reaction.created': this.onInternalChatReactionCreated,
+      'internal_chat.reaction.deleted': this.onInternalChatReactionDeleted,
+      'internal_chat.poll.voted': this.onInternalChatPollVoted,
     };
   }
 

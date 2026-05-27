@@ -382,6 +382,21 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'InternalChat',
+      label: 'Chat Interno',
+      icon: 'i-lucide-message-square-dot',
+      to: accountScopedRoute('internal_chat_home'),
+      activeOn: [
+        'internal_chat',
+        'internal_chat_home',
+        'internal_chat_channel',
+        'internal_chat_dm',
+        'internal_chat_thread',
+        'internal_chat_drafts',
+      ],
+      count: 'internalChat/getUnreadCount',
+    },
+    {
       name: 'Contacts',
       label: t('SIDEBAR.CONTACTS'),
       icon: 'i-lucide-contact',
