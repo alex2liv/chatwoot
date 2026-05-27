@@ -1,4 +1,5 @@
 import advancedFilters from './advancedFilters.json';
+import internalChat from './internalChat.json';
 import agentBots from './agentBots.json';
 import agentMgmt from './agentMgmt.json';
 import attributesMgmt from './attributesMgmt.json';
@@ -88,4 +89,5 @@ export default {
   ...webhooks,
   ...whatsappTemplates,
   ...yearInReview,
+  ...internalChat,
 };
