@@ -394,7 +394,9 @@ const menuItems = computed(() => {
         'internal_chat_thread',
         'internal_chat_drafts',
       ],
-      count: 'internalChat/getUnreadCount',
+      getterKeys: {
+        count: 'internalChat/getUnreadCount',
+      },
     },
     {
       name: 'Contacts',
