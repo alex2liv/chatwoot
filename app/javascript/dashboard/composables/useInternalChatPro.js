@@ -12,14 +12,11 @@ import { useAccount } from 'dashboard/composables/useAccount';
 export function useInternalChatPro() {
   const currentUser = useMapGetter('getCurrentUser');
   const currentRole = useMapGetter('getCurrentRole');
-  const { isCloudFeatureEnabled } = useAccount();
-
-  const proEnabled = computed(() => isCloudFeatureEnabled('internal_chat_pro'));
 
   return {
-    pollsEnabled: proEnabled,
-    maxPrivateChannels: computed(() => (proEnabled.value ? null : 2)),
-    searchHistoryDays: computed(() => (proEnabled.value ? null : 90)),
+    pollsEnabled: computed(() => true),
+    maxPrivateChannels: computed(() => null),
+    searchHistoryDays: computed(() => null),
     isSuperAdmin: computed(() => currentUser.value?.type === 'SuperAdmin'),
     isAdmin: computed(() => currentRole.value === 'administrator'),
   };
