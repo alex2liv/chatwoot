@@ -1,17 +1,17 @@
 class InternalChat::Limits
   def self.unlimited?
-    false
+    true
   end
 
   def self.polls_enabled?
-    unlimited?
+    true
   end
 
   def self.max_private_channels
-    unlimited? ? nil : 2
+    nil
   end
 
   def self.search_history_days
-    unlimited? ? nil : 90
+    nil
   end
 end
