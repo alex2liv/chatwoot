@@ -90,7 +90,7 @@ class Account < ApplicationRecord
   has_many :notifications, dependent: :destroy_async
   has_many :portals, dependent: :destroy_async
   has_many :internal_chat_categories, class_name: 'InternalChat::Category', dependent: :destroy_async
-  has_many :internal_chat_channels, class_name: 'InternalChat::Channel', dependent: :destroy_async, class_name: '::Portal'
+  has_many :internal_chat_channels, class_name: 'InternalChat::Channel', dependent: :destroy_async
   has_many :sms_channels, dependent: :destroy_async, class_name: '::Channel::Sms'
   has_many :teams, dependent: :destroy_async
   has_many :telegram_channels, dependent: :destroy_async, class_name: '::Channel::Telegram'
