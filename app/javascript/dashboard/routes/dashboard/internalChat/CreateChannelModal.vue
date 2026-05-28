@@ -109,6 +109,7 @@ async function handleConfirm() {
       member_ids: isPrivate.value ? selectedAgentIds.value : [],
     });
     useAlert(t('INTERNAL_CHAT.CHANNEL.CREATED'));
+    await store.dispatch('internalChat/get');
     dialogRef.value?.close();
   } catch (error) {
     if (error?.response?.status === 402) {

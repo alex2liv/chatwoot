@@ -52,6 +52,7 @@ async function handleConfirm() {
       channel: { channel_type: 'dm' },
       member_ids: [selectedAgentId.value],
     });
+    await store.dispatch('internalChat/get');
     dialogRef.value?.close();
     router.push({
       name: 'internal_chat_dm',
