@@ -42,6 +42,25 @@ class WebhookListener < BaseListener
     deliver_webhook_payloads(payload, inbox)
   end
 
+  def internal_chat_message_created(event)
+    message = event.data[:message]
+    return unless message.present?
+
+    account = message.account
+    payload = {
+      event: 'internal_chat_message_created',
+      id: message.id,
+      content: message.content,
+      content_type: message.content_type,
+      content_attributes: message.content_attributes,
+      internal_chat_channel_id: message.internal_chat_channel_id,
+      account_id: account.id,
+      sender: message.sender&.push_event_data,
+      created_at: message.created_at,
+    }
+    deliver_account_webhooks(payload, account)
+  end
+
   def webwidget_triggered(event)
     contact_inbox = event.data[:contact_inbox]
     inbox = contact_inbox.inbox
