@@ -68,7 +68,8 @@ const channel = computed(() => {
 });
 
 const messages = computed(() => {
-  return store.getters['internalChat/messages/getMessages'](props.channelId);
+  const allRecords = store.state.internalChat.messages.records;
+  return allRecords[props.channelId] || [];
 });
 
 const messagesUIFlags = computed(() => {
