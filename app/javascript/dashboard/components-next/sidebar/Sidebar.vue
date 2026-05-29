@@ -223,6 +223,23 @@ const menuItems = computed(() => {
       },
     },
     {
+      name: 'InternalChat',
+      label: 'Chat Interno',
+      icon: 'i-lucide-message-square-dot',
+      to: accountScopedRoute('internal_chat_home'),
+      activeOn: [
+        'internal_chat',
+        'internal_chat_home',
+        'internal_chat_channel',
+        'internal_chat_dm',
+        'internal_chat_thread',
+        'internal_chat_drafts',
+      ],
+      getterKeys: {
+        count: 'internalChat/getUnreadCount',
+      },
+    },
+    {
       name: 'Conversation',
       label: t('SIDEBAR.CONVERSATIONS'),
       icon: 'i-lucide-message-circle',
@@ -380,23 +397,6 @@ const menuItems = computed(() => {
           }),
         },
       ],
-    },
-    {
-      name: 'InternalChat',
-      label: 'Chat Interno',
-      icon: 'i-lucide-message-square-dot',
-      to: accountScopedRoute('internal_chat_home'),
-      activeOn: [
-        'internal_chat',
-        'internal_chat_home',
-        'internal_chat_channel',
-        'internal_chat_dm',
-        'internal_chat_thread',
-        'internal_chat_drafts',
-      ],
-      getterKeys: {
-        count: 'internalChat/getUnreadCount',
-      },
     },
     {
       name: 'Contacts',
