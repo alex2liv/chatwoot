@@ -26,6 +26,7 @@ class InternalChat::MessageCreateService
       account_id: @channel.account_id,
       parent_id: @params[:parent_id],
       echo_id: @params[:echo_id],
+      skip_content_validation: @params[:attachments].present?,
       content_attributes: build_content_attributes
     )
   end
