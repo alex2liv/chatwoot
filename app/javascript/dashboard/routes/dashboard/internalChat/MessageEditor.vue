@@ -56,8 +56,14 @@ let dragCounter = 0;
 
 // Gravação de áudio
 const isRecording = ref(false);
+const waveformRef = ref(null);
+const recordingTime = ref(0);
 let mediaRecorder = null;
 let audioChunks = [];
+let audioContext = null;
+let analyser = null;
+let animationId = null;
+let recordingTimer = null;
 
 const canSend = computed(() => {
   return (
@@ -184,6 +190,15 @@ async function startRecording() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioChunks = [];
+    recordingTime.value = 0;
+
+    // Setup Web Audio API analyser
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 64;
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.ondataavailable = event => {
       if (event.data.size > 0) audioChunks.push(event.data);
@@ -193,12 +208,50 @@ async function startRecording() {
       const file = new File([blob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
       attachedFiles.value = [...attachedFiles.value, file];
       stream.getTracks().forEach(track => track.stop());
+      if (audioContext) { audioContext.close(); audioContext = null; }
+      cancelAnimationFrame(animationId);
+      clearInterval(recordingTimer);
     };
     mediaRecorder.start();
     isRecording.value = true;
+
+    // Timer
+    recordingTimer = setInterval(() => { recordingTime.value++; }, 1000);
+
+    // Draw waveform
+    drawWaveform();
   } catch {
     console.error('Erro ao acessar microfone');
   }
+}
+
+function drawWaveform() {
+  if (!analyser || !waveformRef.value) {
+    animationId = requestAnimationFrame(drawWaveform);
+    return;
+  }
+  const canvas = waveformRef.value;
+  const ctx = canvas.getContext('2d');
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  analyser.getByteFrequencyData(dataArray);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const barWidth = (canvas.width / bufferLength) * 2;
+  let x = 0;
+  for (let i = 0; i < bufferLength; i++) {
+    const barHeight = (dataArray[i] / 255) * canvas.height;
+    ctx.fillStyle = `rgba(239, 68, 68, ${0.6 + (dataArray[i] / 255) * 0.4})`;
+    ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+    x += barWidth;
+  }
+  animationId = requestAnimationFrame(drawWaveform);
+}
+
+function formatRecordingTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
 }
 
 function stopRecording() {
@@ -206,6 +259,9 @@ function stopRecording() {
     mediaRecorder.stop();
   }
   isRecording.value = false;
+  cancelAnimationFrame(animationId);
+  clearInterval(recordingTimer);
+  recordingTime.value = 0;
 }
 
 function toggleRecording() {
@@ -275,6 +331,9 @@ onBeforeUnmount(() => {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
+  cancelAnimationFrame(animationId);
+  clearInterval(recordingTimer);
+  if (audioContext) audioContext.close();
   if (draftTimer) {
     clearTimeout(draftTimer);
     draftTimer = null;
@@ -329,6 +388,17 @@ defineExpose({ focus, setContent, getContent });
       />
       {{ t('INTERNAL_CHAT.THREAD.ALSO_SEND_IN_CHANNEL') }}
     </label>
+    <!-- Waveform durante gravacao -->
+    <div v-if="isRecording" class="mb-1 flex items-center gap-2 px-3 py-1">
+      <span class="text-xs font-mono text-red-500">{{ formatRecordingTime(recordingTime) }}</span>
+      <canvas
+        ref="waveformRef"
+        width="200"
+        height="32"
+        class="rounded-md bg-n-slate-3"
+      />
+      <span class="text-xs text-red-500 animate-pulse">● gravando</span>
+    </div>
     <!-- Attached files preview -->
     <div v-if="attachedFiles.length" class="mb-1 flex flex-col gap-1 px-1">
       <div
