@@ -54,6 +54,11 @@ const isDragging = ref(false);
 let draftTimer = null;
 let dragCounter = 0;
 
+// Gravação de áudio
+const isRecording = ref(false);
+let mediaRecorder = null;
+let audioChunks = [];
+
 const canSend = computed(() => {
   return (
     (editorContent.value.trim().length > 0 || attachedFiles.value.length > 0) &&
@@ -166,6 +171,42 @@ function hasFileDrag(event) {
   return event.dataTransfer?.types?.includes('Files');
 }
 
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = event => {
+      if (event.data.size > 0) audioChunks.push(event.data);
+    };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const file = new File([blob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+      attachedFiles.value = [...attachedFiles.value, file];
+      stream.getTracks().forEach(track => track.stop());
+    };
+    mediaRecorder.start();
+    isRecording.value = true;
+  } catch {
+    console.error('Erro ao acessar microfone');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  isRecording.value = false;
+}
+
+function toggleRecording() {
+  if (isRecording.value) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
 function handleDragEnter(event) {
   if (!hasFileDrag(event)) return;
   event.preventDefault();
@@ -222,6 +263,9 @@ function getContent() {
 }
 
 onBeforeUnmount(() => {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
   if (draftTimer) {
     clearTimeout(draftTimer);
     draftTimer = null;
@@ -373,6 +417,19 @@ defineExpose({ focus, setContent, getContent });
         @click="emit('create-poll')"
       >
         <Icon icon="i-lucide-bar-chart-2" class="size-4" />
+      </button>
+      <button
+        type="button"
+        class="flex-shrink-0 flex items-center justify-center rounded-lg p-1.5 transition-colors"
+        :class="
+          isRecording
+            ? 'bg-red-500 text-white hover:opacity-90 animate-pulse'
+            : 'text-n-slate-11 hover:bg-n-alpha-2 hover:text-n-slate-12'
+        "
+        :title="isRecording ? 'Parar gravação' : 'Gravar áudio'"
+        @click="toggleRecording"
+      >
+        <Icon :icon="isRecording ? 'i-lucide-square' : 'i-lucide-mic'" class="size-4" />
       </button>
       <button
         type="button"
