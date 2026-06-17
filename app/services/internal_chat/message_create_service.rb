@@ -10,6 +10,7 @@ class InternalChat::MessageCreateService
   def perform
     message = build_message
     message.save!
+    attach_files(message)
     update_channel_activity
     dispatch_message_event(message)
     message
@@ -33,6 +34,34 @@ class InternalChat::MessageCreateService
     attrs = {}
     attrs['also_send_in_channel'] = @params[:also_send_in_channel] if @params[:also_send_in_channel].present?
     attrs
+  end
+
+  def attach_files(message)
+    return unless @params[:attachments].present?
+
+    Array(@params[:attachments]).each do |attachment_params|
+      next unless attachment_params[:file].present?
+
+      attachment = message.attachments.build(
+        account_id: @channel.account_id,
+        file_type: attachment_params[:file_type] || detect_file_type(attachment_params[:file])
+      )
+      attachment.file.attach(attachment_params[:file])
+      attachment.save!
+    end
+  end
+
+  def detect_file_type(file)
+    content_type = file.content_type.to_s
+    if content_type.start_with?('image/')
+      'image'
+    elsif content_type.start_with?('video/')
+      'video'
+    elsif content_type.start_with?('audio/')
+      'audio'
+    else
+      'file'
+    end
   end
 
   def update_channel_activity
