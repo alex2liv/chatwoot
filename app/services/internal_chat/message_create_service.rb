@@ -58,7 +58,7 @@ class InternalChat::MessageCreateService
       'image'
     elsif content_type.start_with?('video/')
       'video'
-    elsif content_type.start_with?('audio/')
+    elsif content_type.start_with?('audio/') || content_type.include?('webm') || content_type.include?('ogg') || content_type.include?('mp3') || content_type.include?('wav') || content_type.include?('m4a')
       'audio'
     else
       'file'
