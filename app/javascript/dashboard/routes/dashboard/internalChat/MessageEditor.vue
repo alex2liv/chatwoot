@@ -94,7 +94,16 @@ function focusEditor() {
 }
 
 function insertMentionTrigger(char) {
-  editorRef.value?.insertMentionTrigger?.(char);
+  // Foca o editor e insere o caractere diretamente
+  editorRef.value?.focusEditorInputField?.();
+  // Adiciona o char ao conteúdo atual
+  const current = editorContent.value || '';
+  // Se já termina com espaço ou está vazio, só adiciona o char
+  if (current === '' || current.endsWith(' ') || current.endsWith('\n')) {
+    editorContent.value = current + char;
+  } else {
+    editorContent.value = current + ' ' + char;
+  }
 }
 
 function handleSend() {
