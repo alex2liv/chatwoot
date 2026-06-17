@@ -54,7 +54,7 @@ class InternalChat::Message < ApplicationRecord
 
   attr_accessor :skip_content_validation
 
-  validates :content, presence: true, unless: -> { skip_content_validation || !text? }
+  validates :content, presence: true, unless: -> { skip_content_validation || !text? || attachments.any? }
   validates :content, length: { maximum: 150_000 }
 
   scope :ordered, -> { order(created_at: :asc) }
