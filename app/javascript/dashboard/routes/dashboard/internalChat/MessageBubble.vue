@@ -342,6 +342,13 @@ function handleUnvote(payload) {
               loading="lazy"
             />
           </a>
+          <audio
+            v-else-if="attachment.file_type === 'audio'"
+            :src="attachment.file_url || attachment.external_url"
+            controls
+            class="max-w-xs rounded-lg"
+            style="height: 40px;"
+          />
           <a
             v-else
             :href="attachment.file_url || attachment.external_url"
