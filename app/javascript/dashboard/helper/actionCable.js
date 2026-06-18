@@ -367,6 +367,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       pollId: data.poll_id,
       option: data,
     });
+  };
 
   onVoiceCallIncoming = data => {
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
