@@ -138,6 +138,10 @@
         }
       }
     },
+    "METASYNC": {
+      "REDIRECTING": "Abrindo o Metasync em uma nova aba...",
+      "OPEN_LINK": "Clique aqui se não abriu automaticamente"
+    },
     "WHATSAPP": {
       "HEADER_TITLE": "Campanhas do WhatsApp",
       "NEW_CAMPAIGN": "Criar campanha",

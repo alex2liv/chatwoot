@@ -138,6 +138,10 @@
         }
       }
     },
+    "METASYNC": {
+      "REDIRECTING": "Opening Metasync in a new tab...",
+      "OPEN_LINK": "Click here if it didn't open automatically"
+    },
     "WHATSAPP": {
       "HEADER_TITLE": "WhatsApp campaigns",
       "NEW_CAMPAIGN": "Create campaign",
