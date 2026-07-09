@@ -139,8 +139,7 @@
       }
     },
     "METASYNC": {
-      "REDIRECTING": "Abrindo o Metasync em uma nova aba...",
-      "OPEN_LINK": "Clique aqui se não abriu automaticamente"
+      "OPEN_NEW_TAB": "Abrir em nova aba ↗"
     },
     "WHATSAPP": {
       "HEADER_TITLE": "Campanhas do WhatsApp",

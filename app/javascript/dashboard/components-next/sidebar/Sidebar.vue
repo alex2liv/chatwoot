@@ -17,7 +17,6 @@ import SidebarProfileMenu from './SidebarProfileMenu.vue';
 import SidebarChangelogCard from './SidebarChangelogCard.vue';
 import SidebarChangelogButton from './SidebarChangelogButton.vue';
 import ChannelLeaf from './ChannelLeaf.vue';
-import MetasyncLeaf from './MetasyncLeaf.vue';
 import ChannelIcon from 'next/icon/ChannelIcon.vue';
 import SidebarAccountSwitcher from './SidebarAccountSwitcher.vue';
 import Logo from 'next/icon/Logo.vue';
@@ -665,11 +664,6 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.METASYNC'),
           icon: 'i-lucide-external-link',
           to: accountScopedRoute('campaigns_metasync_index'),
-          component: leafProps =>
-            h(MetasyncLeaf, {
-              label: leafProps.label,
-              icon: leafProps.icon,
-            }),
         },
       ],
     },
