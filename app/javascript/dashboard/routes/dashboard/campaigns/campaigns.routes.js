@@ -6,10 +6,11 @@ import SMSCampaignsPage from './pages/SMSCampaignsPage.vue';
 import WhatsAppCampaignsPage from './pages/WhatsAppCampaignsPage.vue';
 import MetasyncCampaignsPage from './pages/MetasyncCampaignsPage.vue';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
+import { CAMPAIGN_PERMISSIONS } from 'dashboard/constants/permissions.js';
 
 const meta = {
   featureFlag: FEATURE_FLAGS.CAMPAIGNS,
-  permissions: ['administrator'],
+  permissions: ['administrator', CAMPAIGN_PERMISSIONS],
 };
 
 const campaignsRoutes = {
