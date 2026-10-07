@@ -44,7 +44,7 @@ const labelMenuItems = computed(() => {
       ),
       action: 'contactLabel',
     }))
-    .toSorted((a, b) => Number(a.isSelected) - Number(b.isSelected));
+    .sort((a, b) => Number(a.isSelected) - Number(b.isSelected));
 });
 
 const fetchLabels = async contactId => {

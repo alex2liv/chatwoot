@@ -68,7 +68,7 @@ const agentList = computed(() => {
         action: 'assignAuthor',
       }))
       // Sort the list by isSelected first, then by name(label)
-      .toSorted((a, b) => {
+      .sort((a, b) => {
         if (a.isSelected !== b.isSelected) {
           return Number(b.isSelected) - Number(a.isSelected);
         }
@@ -119,7 +119,7 @@ const categoryList = computed(() => {
         action: 'assignCategory',
       }))
       // Sort categories by isSelected
-      .toSorted((a, b) => Number(b.isSelected) - Number(a.isSelected))
+      .sort((a, b) => Number(b.isSelected) - Number(a.isSelected))
   );
 });
 
