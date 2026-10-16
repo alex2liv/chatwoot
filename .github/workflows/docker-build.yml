@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - metasync-internal-chat
+      - 'upgrade/**'
 
 env:
   REGISTRY: ghcr.io
@@ -27,12 +28,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Producao (metasync-internal-chat) publica :latest + a versao.
+      # Branches upgrade/* publicam SO uma tag de teste (ex.: :test-upgrade-v4.18.0)
+      # para o chatwoot2 — nunca tocam no :latest usado em producao.
+      - name: Definir tags
+        id: tags
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "metasync-internal-chat" ]; then
+            {
+              echo "list<<EOF"
+              echo "${REGISTRY}/${IMAGE_NAME}:latest"
+              echo "${REGISTRY}/${IMAGE_NAME}:metasync-v$(cat VERSION_CW)"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "list=${REGISTRY}/${IMAGE_NAME}:test-${GITHUB_REF_NAME//\//-}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: |
-            ghcr.io/alex2liv/chatwoot:latest
-            ghcr.io/alex2liv/chatwoot:metasync-v4.14.0
+          tags: ${{ steps.tags.outputs.list }}
