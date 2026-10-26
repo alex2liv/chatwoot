@@ -16,6 +16,8 @@ import MenuItem from '../../../components/widgets/conversation/contextMenu/menuI
 import { useTrack } from 'dashboard/composables';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import ReportCaptainMessageDialog from './ReportCaptainMessageDialog.vue';
+import ContactAPI from 'dashboard/api/contacts';
+import MessageApi from 'dashboard/api/inbox/message';
 
 export default {
   components: {
@@ -62,6 +64,14 @@ export default {
       showEditModal: false,
       editText: '',
       isSavingEdit: false,
+      showForwardModal: false,
+      forwardQuery: '',
+      forwardResults: [],
+      forwardSelected: [],
+      isSearchingForward: false,
+      isSendingForward: false,
+      forwardSearchTimer: null,
+      forwardSearchSeq: 0,
     };
   },
   computed: {
@@ -182,6 +192,86 @@ export default {
         this.saveEdit();
       }
     },
+    openForwardModal() {
+      this.handleClose();
+      this.forwardQuery = '';
+      this.forwardResults = [];
+      this.forwardSelected = [];
+      this.isSendingForward = false;
+      this.showForwardModal = true;
+    },
+    closeForwardModal() {
+      this.showForwardModal = false;
+      clearTimeout(this.forwardSearchTimer);
+    },
+    onForwardQueryInput() {
+      clearTimeout(this.forwardSearchTimer);
+      const query = (this.forwardQuery || '').trim();
+      if (query.length < 2) {
+        this.forwardResults = [];
+        return;
+      }
+      this.forwardSearchTimer = setTimeout(() => this.searchForward(query), 300);
+    },
+    async searchForward(query) {
+      this.forwardSearchSeq += 1;
+      const seq = this.forwardSearchSeq;
+      this.isSearchingForward = true;
+      try {
+        const { data } = await ContactAPI.search(query);
+        if (seq !== this.forwardSearchSeq) return;
+        this.forwardResults = ((data && data.payload) || []).slice(0, 15);
+      } catch (error) {
+        if (seq === this.forwardSearchSeq) this.forwardResults = [];
+      } finally {
+        if (seq === this.forwardSearchSeq) this.isSearchingForward = false;
+      }
+    },
+    isForwardSelected(contact) {
+      return this.forwardSelected.some(c => c.id === contact.id);
+    },
+    toggleForwardContact(contact) {
+      if (this.isForwardSelected(contact)) {
+        this.forwardSelected = this.forwardSelected.filter(
+          c => c.id !== contact.id
+        );
+        return;
+      }
+      if (this.forwardSelected.length >= 5) {
+        useAlert(this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.MAX'));
+        return;
+      }
+      this.forwardSelected = this.forwardSelected.concat([contact]);
+    },
+    forwardContactLine(contact) {
+      return contact.phone_number || contact.identifier || contact.email || '';
+    },
+    async sendForward() {
+      if (!this.forwardSelected.length || this.isSendingForward) return;
+      this.isSendingForward = true;
+      try {
+        const { data } = await MessageApi.forwardWhatsapp(
+          this.conversationId,
+          this.messageId,
+          this.forwardSelected.map(c => c.id)
+        );
+        const results = (data && data.payload) || [];
+        const failed = results.filter(r => !r.ok);
+        if (failed.length) {
+          useAlert(failed.map(r => r.error).join(' | '));
+        } else {
+          useAlert(this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.SUCCESS'));
+        }
+        this.closeForwardModal();
+      } catch (error) {
+        useAlert(
+          (error && error.response && error.response.data && error.response.data.error) ||
+            this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.ERROR')
+        );
+      } finally {
+        this.isSendingForward = false;
+      }
+    },
     openDeleteModal() {
       this.handleClose();
       this.showDeleteModal = true;
@@ -259,6 +349,94 @@ export default {
         </div>
       </div>
     </woot-modal>
+    <!-- Metasync: Encaminhar mensagem -->
+    <woot-modal
+      v-if="showForwardModal && enabledOptions['forwardWhatsapp']"
+      v-model:show="showForwardModal"
+      :on-close="closeForwardModal"
+    >
+      <div class="flex flex-col gap-3 p-6">
+        <h2 class="text-base font-medium text-n-slate-12">
+          {{ $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.TITLE') }}
+        </h2>
+        <input
+          v-model="forwardQuery"
+          type="text"
+          class="w-full px-3 py-2 text-sm rounded-lg bg-n-alpha-black2 text-n-slate-12 outline outline-1 outline-n-weak focus:outline-n-brand"
+          :placeholder="$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.SEARCH')"
+          @input="onForwardQueryInput"
+        />
+        <div v-if="forwardSelected.length" class="flex flex-wrap gap-2">
+          <button
+            v-for="contact in forwardSelected"
+            :key="'sel-' + contact.id"
+            type="button"
+            class="px-2 py-1 text-xs rounded-full bg-n-brand text-white"
+            @click="toggleForwardContact(contact)"
+          >
+            {{ contact.name }} ✕
+          </button>
+        </div>
+        <div
+          class="flex flex-col overflow-y-auto rounded-lg max-h-64 outline outline-1 outline-n-weak"
+        >
+          <p
+            v-if="isSearchingForward"
+            class="p-3 text-sm text-n-slate-11"
+          >
+            {{ $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.SEARCHING') }}
+          </p>
+          <p
+            v-else-if="!forwardResults.length"
+            class="p-3 text-sm text-n-slate-11"
+          >
+            {{ $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.HINT') }}
+          </p>
+          <template v-else>
+          <button
+            v-for="contact in forwardResults"
+            :key="contact.id"
+            type="button"
+            class="flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-n-alpha-2"
+            :class="{ 'bg-n-alpha-2': isForwardSelected(contact) }"
+            @click="toggleForwardContact(contact)"
+          >
+            <span class="flex flex-col min-w-0">
+              <span class="text-sm truncate text-n-slate-12">
+                {{ contact.name }}
+              </span>
+              <span class="text-xs truncate text-n-slate-11">
+                {{ forwardContactLine(contact) }}
+              </span>
+            </span>
+            <span v-if="isForwardSelected(contact)" class="text-n-brand">
+              ✓
+            </span>
+          </button>
+          </template>
+        </div>
+        <div class="flex justify-end gap-2">
+          <NextButton
+            faded
+            slate
+            sm
+            :label="$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.CANCEL')"
+            @click="closeForwardModal"
+          />
+          <NextButton
+            sm
+            :is-loading="isSendingForward"
+            :disabled="!forwardSelected.length"
+            :label="
+              $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.SEND', {
+                count: forwardSelected.length,
+              })
+            "
+            @click="sendForward"
+          />
+        </div>
+      </div>
+    </woot-modal>
     <!-- Confirm Deletion -->
     <woot-delete-modal
       v-if="showDeleteModal && enabledOptions['delete']"
@@ -304,6 +482,15 @@ export default {
           }"
           variant="icon"
           @click.stop="openEditModal"
+        />
+        <MenuItem
+          v-if="enabledOptions['forwardWhatsapp']"
+          :option="{
+            icon: 'arrow-forward',
+            label: $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.LABEL'),
+          }"
+          variant="icon"
+          @click.stop="openForwardModal"
         />
         <MenuItem
           v-if="enabledOptions['replyTo']"

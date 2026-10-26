@@ -121,6 +121,14 @@ class MessageApi extends ApiClient {
     );
   }
 
+  // Metasync: encaminhar mensagem para outros contatos
+  forwardWhatsapp(conversationID, messageId, contactIds) {
+    return axios.post(
+      `${this.url}/${conversationID}/messages/${messageId}/forward_whatsapp`,
+      { contact_ids: contactIds }
+    );
+  }
+
   retry(conversationID, messageId) {
     return axios.post(
       `${this.url}/${conversationID}/messages/${messageId}/retry`

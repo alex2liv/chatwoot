@@ -429,6 +429,18 @@
         "CANCEL": "Cancelar",
         "SUCCESS": "Mensagem editada",
         "ERROR": "Não foi possível editar a mensagem"
+      },
+      "FORWARD_WHATSAPP": {
+        "LABEL": "Encaminhar",
+        "TITLE": "Encaminhar mensagem",
+        "SEARCH": "Buscar contato por nome ou telefone",
+        "SEARCHING": "Buscando...",
+        "HINT": "Digite pelo menos 2 letras para buscar. Dá para escolher até 5 contatos.",
+        "MAX": "Dá para encaminhar para no máximo 5 contatos por vez",
+        "SEND": "Encaminhar ({count})",
+        "CANCEL": "Cancelar",
+        "SUCCESS": "Mensagem encaminhada",
+        "ERROR": "Não foi possível encaminhar a mensagem"
       }
     },
     "SIDEBAR": {

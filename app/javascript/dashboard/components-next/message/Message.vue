@@ -444,8 +444,17 @@ const contextMenuEnabledOptions = computed(() => {
     inbox.value?.channel_type === 'Channel::Api' &&
     isRecent;
 
+  // Metasync: encaminhar (texto, imagem, documento...) para outros contatos
+  const canForwardWhatsapp =
+    !props.private &&
+    (hasText || hasAttachments) &&
+    !isFailedOrProcessing &&
+    !isMessageDeleted.value &&
+    inbox.value?.channel_type === 'Channel::Api';
+
   return {
     edit: canEdit,
+    forwardWhatsapp: canForwardWhatsapp,
     copy: hasText,
     delete:
       (hasText || hasAttachments) &&

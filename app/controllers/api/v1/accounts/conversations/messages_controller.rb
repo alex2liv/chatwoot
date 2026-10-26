@@ -46,6 +46,22 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: message.push_event_data
   end
 
+  # Metasync: encaminha a mensagem (texto e/ou anexos) para ate 5 contatos.
+  # Cria uma mensagem de saida na conversa de cada contato (mesma inbox); o fluxo
+  # de saida do n8n entrega no WhatsApp como qualquer mensagem do agente.
+  MAX_FORWARD_CONTACTS = 5
+
+  def forward_whatsapp
+    error = forward_error
+    return render json: { error: error }, status: :unprocessable_entity if error
+
+    results = forward_contact_ids.map { |contact_id| forward_to_contact(contact_id) }
+    ok = results.select { |r| r[:ok] }
+    return render json: { error: results.map { |r| r[:error] }.compact.join(' | '), payload: results }, status: :unprocessable_entity if ok.empty?
+
+    render json: { payload: results }
+  end
+
   def retry
     return if message.blank?
 
@@ -99,6 +115,79 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
       clear_source_id unless @conversation.inbox.api? || @conversation.inbox.web_widget?
       true
     end
+  end
+
+  def forward_contact_ids
+    Array(params[:contact_ids]).map(&:to_i).select(&:positive?).uniq.first(MAX_FORWARD_CONTACTS)
+  end
+
+  def forward_error
+    return 'Escolha pelo menos um contato' if forward_contact_ids.empty?
+    return 'Só é possível encaminhar em canais WhatsApp (API)' unless @conversation.inbox.api?
+    return 'Mensagem privada não pode ser encaminhada' if message.private?
+    return 'Mensagem apagada não pode ser encaminhada' if message.content_attributes[:deleted]
+    return 'Mensagem vazia' if message.content.blank? && message.attachments.empty?
+
+    nil
+  end
+
+  def forward_to_contact(contact_id)
+    contact = Current.account.contacts.find_by(id: contact_id)
+    return { contact_id: contact_id, ok: false, error: "Contato #{contact_id} não encontrado" } unless contact
+
+    conversation = forward_target_conversation(contact, @conversation.inbox)
+    forwarded = build_forwarded_message(conversation)
+    { contact_id: contact.id, ok: true, conversation_id: conversation.display_id, message_id: forwarded.id }
+  rescue StandardError => e
+    Rails.logger.error("[forward_whatsapp] contato #{contact_id}: #{e.class} #{e.message}")
+    { contact_id: contact_id, ok: false, error: "#{contact&.name || contact_id}: #{e.message}" }
+  end
+
+  # Mesma regra do fluxo de entrada do n8n: usa o contact_inbox e a conversa mais
+  # recente desse contato nessa inbox; reabre se estiver resolvida/pendente.
+  def forward_target_conversation(contact, inbox)
+    contact_inbox = ContactInbox.where(inbox_id: inbox.id, contact_id: contact.id).order(:id).first
+    contact_inbox ||= ContactInbox.create!(contact: contact, inbox: inbox, source_id: forward_source_id(contact))
+
+    conversation = Conversation.where(account_id: inbox.account_id, inbox_id: inbox.id, contact_id: contact.id)
+                               .order(id: :desc).first
+    if conversation
+      conversation.update!(status: :open) if conversation.resolved? || conversation.pending?
+      return conversation
+    end
+
+    Conversation.create!(account_id: inbox.account_id, inbox_id: inbox.id, contact_id: contact.id,
+                         contact_inbox_id: contact_inbox.id, status: :open)
+  end
+
+  def forward_source_id(contact)
+    return contact.identifier if contact.identifier.present?
+
+    digits = contact.phone_number.to_s.gsub(/\D/, '')
+    raise StandardError, 'contato sem telefone' if digits.blank?
+
+    "#{digits}@s.whatsapp.net"
+  end
+
+  def build_forwarded_message(conversation)
+    forwarded = conversation.messages.new(
+      account_id: conversation.account_id,
+      inbox_id: conversation.inbox_id,
+      message_type: :outgoing,
+      sender: Current.user,
+      content: message.content,
+      content_attributes: { 'whatsapp_forwarded_from' => message.id }
+    )
+    message.attachments.each do |att|
+      copy = forwarded.attachments.new(
+        account_id: conversation.account_id, file_type: att.file_type, external_url: att.external_url,
+        fallback_title: att.fallback_title, coordinates_lat: att.coordinates_lat,
+        coordinates_long: att.coordinates_long, meta: att.meta
+      )
+      copy.file = att.file.blob if att.file.attached?
+    end
+    forwarded.save!
+    forwarded
   end
 
   def edit_content_error(new_content)

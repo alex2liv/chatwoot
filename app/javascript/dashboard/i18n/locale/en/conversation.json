@@ -429,6 +429,18 @@
         "CANCEL": "Cancel",
         "SUCCESS": "Message edited",
         "ERROR": "Could not edit the message"
+      },
+      "FORWARD_WHATSAPP": {
+        "LABEL": "Forward",
+        "TITLE": "Forward message",
+        "SEARCH": "Search contact by name or phone",
+        "SEARCHING": "Searching...",
+        "HINT": "Type at least 2 characters to search. You can pick up to 5 contacts.",
+        "MAX": "You can forward to at most 5 contacts at a time",
+        "SEND": "Forward ({count})",
+        "CANCEL": "Cancel",
+        "SUCCESS": "Message forwarded",
+        "ERROR": "Could not forward the message"
       }
     },
     "SIDEBAR": {
