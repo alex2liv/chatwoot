@@ -59,6 +59,9 @@ export default {
     return {
       isCannedResponseModalOpen: false,
       showDeleteModal: false,
+      showEditModal: false,
+      editText: '',
+      isSavingEdit: false,
     };
   },
   computed: {
@@ -144,6 +147,41 @@ export default {
       this.$emit('forwardEmail');
       this.handleClose();
     },
+    openEditModal() {
+      this.handleClose();
+      this.editText = this.message.original_content ?? this.messageContent ?? '';
+      this.showEditModal = true;
+    },
+    closeEditModal() {
+      this.showEditModal = false;
+      this.isSavingEdit = false;
+    },
+    async saveEdit() {
+      const content = (this.editText || '').trim();
+      if (!content || this.isSavingEdit) return;
+      this.isSavingEdit = true;
+      try {
+        await this.$store.dispatch('editMessageContent', {
+          conversationId: this.conversationId,
+          messageId: this.messageId,
+          content,
+        });
+        useAlert(this.$t('CONVERSATION.CONTEXT_MENU.EDIT_MESSAGE.SUCCESS'));
+        this.closeEditModal();
+      } catch (error) {
+        useAlert(
+          error?.response?.data?.error ||
+            this.$t('CONVERSATION.CONTEXT_MENU.EDIT_MESSAGE.ERROR')
+        );
+        this.isSavingEdit = false;
+      }
+    },
+    onEditKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.saveEdit();
+      }
+    },
     openDeleteModal() {
       this.handleClose();
       this.showDeleteModal = true;
@@ -184,6 +222,43 @@ export default {
         :on-close="hideCannedResponseModal"
       />
     </woot-modal>
+    <!-- Metasync: Editar mensagem -->
+    <woot-modal
+      v-if="showEditModal && enabledOptions['edit']"
+      v-model:show="showEditModal"
+      :on-close="closeEditModal"
+    >
+      <div class="flex flex-col gap-4 p-6">
+        <h2 class="text-base font-medium text-n-slate-12">
+          {{ $t('CONVERSATION.CONTEXT_MENU.EDIT_MESSAGE.TITLE') }}
+        </h2>
+        <textarea
+          v-model="editText"
+          rows="5"
+          class="w-full p-3 text-sm rounded-lg resize-y bg-n-alpha-black2 text-n-slate-12 outline outline-1 outline-n-weak focus:outline-n-brand"
+          @keydown="onEditKeydown"
+        />
+        <p class="text-xs text-n-slate-11">
+          {{ $t('CONVERSATION.CONTEXT_MENU.EDIT_MESSAGE.HINT') }}
+        </p>
+        <div class="flex justify-end gap-2">
+          <NextButton
+            faded
+            slate
+            sm
+            :label="$t('CONVERSATION.CONTEXT_MENU.EDIT_MESSAGE.CANCEL')"
+            @click="closeEditModal"
+          />
+          <NextButton
+            sm
+            :is-loading="isSavingEdit"
+            :disabled="!editText || !editText.trim()"
+            :label="$t('CONVERSATION.CONTEXT_MENU.EDIT_MESSAGE.SAVE')"
+            @click="saveEdit"
+          />
+        </div>
+      </div>
+    </woot-modal>
     <!-- Confirm Deletion -->
     <woot-delete-modal
       v-if="showDeleteModal && enabledOptions['delete']"
@@ -220,6 +295,15 @@ export default {
           }"
           variant="icon"
           @click.stop="handleForwardEmail"
+        />
+        <MenuItem
+          v-if="enabledOptions['edit']"
+          :option="{
+            icon: 'edit',
+            label: $t('CONVERSATION.CONTEXT_MENU.EDIT_MESSAGE.LABEL'),
+          }"
+          variant="icon"
+          @click.stop="openEditModal"
         />
         <MenuItem
           v-if="enabledOptions['replyTo']"

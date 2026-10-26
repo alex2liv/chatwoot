@@ -420,6 +420,15 @@
           "outdated_information": "Outdated information",
           "other": "Other"
         }
+      },
+      "EDIT_MESSAGE": {
+        "LABEL": "Edit",
+        "TITLE": "Edit message",
+        "HINT": "The edit is also applied on the customer's WhatsApp (up to 15 minutes after sending). Enter saves, Shift+Enter adds a new line.",
+        "SAVE": "Save",
+        "CANCEL": "Cancel",
+        "SUCCESS": "Message edited",
+        "ERROR": "Could not edit the message"
       }
     },
     "SIDEBAR": {

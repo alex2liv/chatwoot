@@ -113,6 +113,14 @@ class MessageApi extends ApiClient {
     return axios.delete(`${this.url}/${conversationID}/messages/${messageId}`);
   }
 
+  // Metasync: editar mensagem enviada
+  editContent(conversationID, messageId, content) {
+    return axios.patch(
+      `${this.url}/${conversationID}/messages/${messageId}/edit_content`,
+      { content }
+    );
+  }
+
   retry(conversationID, messageId) {
     return axios.post(
       `${this.url}/${conversationID}/messages/${messageId}/retry`

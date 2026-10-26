@@ -27,6 +27,25 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     end
   end
 
+  # Metasync: edita o texto de uma mensagem enviada pelo agente.
+  # Marca content_attributes.whatsapp_edit_pending para o n8n repassar a edicao ao WhatsApp
+  # (Evolution GO /message/edit). O WhatsApp so aceita edicao ate 15 minutos apos o envio.
+  WHATSAPP_EDIT_WINDOW = 15.minutes
+
+  def edit_content
+    new_content = params[:content].to_s.strip
+    error = edit_content_error(new_content)
+    return render json: { error: error }, status: :unprocessable_entity if error
+
+    attrs = (message.content_attributes || {}).to_h.stringify_keys
+    attrs['edited'] = true
+    attrs['edited_at'] = Time.current.to_i
+    attrs['previous_content'] = message.content
+    attrs['whatsapp_edit_pending'] = true
+    message.update!(content: new_content, content_attributes: attrs)
+    render json: message.push_event_data
+  end
+
   def retry
     return if message.blank?
 
@@ -82,13 +101,25 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     end
   end
 
+  def edit_content_error(new_content)
+    return 'Mensagem vazia' if new_content.blank?
+    return 'Texto igual ao atual' if new_content == message.content
+    return 'Só é possível editar mensagens enviadas por você' unless message.outgoing? && !message.private?
+    return 'Só é possível editar em canais WhatsApp (API)' unless @conversation.inbox.api?
+    return 'Não é possível editar mensagens com anexo' if message.attachments.any?
+    return 'O WhatsApp ainda não confirmou essa mensagem. Aguarde alguns segundos e tente de novo' if message.source_id.blank?
+    return 'O WhatsApp só permite editar até 15 minutos após o envio' if message.created_at < WHATSAPP_EDIT_WINDOW.ago
+
+    nil
+  end
+
   def clear_source_id
     Rails.logger.info "Cleared older source ID #{message.source_id} for message #{message.id}" if message.source_id.present?
     message.update!(source_id: nil)
   end
 
   def permitted_params
-    params.permit(:id, :target_language, :status, :external_error)
+    params.permit(:id, :target_language, :status, :external_error, :content)
   end
 
   def already_translated_content_available?

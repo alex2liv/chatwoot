@@ -420,6 +420,15 @@
           "outdated_information": "Informação desatualizada",
           "other": "Outro"
         }
+      },
+      "EDIT_MESSAGE": {
+        "LABEL": "Editar",
+        "TITLE": "Editar mensagem",
+        "HINT": "A edição também é feita no WhatsApp do cliente (até 15 minutos após o envio). Enter salva, Shift+Enter quebra linha.",
+        "SAVE": "Salvar",
+        "CANCEL": "Cancelar",
+        "SUCCESS": "Mensagem editada",
+        "ERROR": "Não foi possível editar a mensagem"
       }
     },
     "SIDEBAR": {

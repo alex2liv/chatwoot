@@ -129,7 +129,7 @@ const props = defineProps({
     validator: value => Object.values(CONTENT_TYPES).includes(value),
   },
   conversationId: { type: Number, required: true },
-  createdAt: { type: Number, required: true }, // eslint-disable-line vue/no-unused-properties
+  createdAt: { type: Number, required: true },
   currentUserId: { type: Number, required: true }, // eslint-disable-line vue/no-unused-properties
   groupWithNext: { type: Boolean, default: false },
   inboxId: { type: Number, default: null }, // eslint-disable-line vue/no-unused-properties
@@ -414,6 +414,7 @@ const payloadForContextMenu = computed(() => {
     id: props.id,
     content_attributes: props.contentAttributes,
     content: displayedContent.value,
+    original_content: props.content,
     conversation_id: props.conversationId,
   };
 });
@@ -427,7 +428,24 @@ const contextMenuEnabledOptions = computed(() => {
     props.status === MESSAGE_STATUS.FAILED ||
     props.status === MESSAGE_STATUS.PROGRESS;
 
+  // Metasync: editar mensagem enviada (WhatsApp permite ate 15 min)
+  const WHATSAPP_EDIT_WINDOW_SECONDS = 15 * 60;
+  const isRecent =
+    !!props.createdAt &&
+    Date.now() / 1000 - props.createdAt < WHATSAPP_EDIT_WINDOW_SECONDS;
+  const canEdit =
+    isOutgoing &&
+    !props.private &&
+    hasText &&
+    !hasAttachments &&
+    props.contentType === CONTENT_TYPES.TEXT &&
+    !isFailedOrProcessing &&
+    !isMessageDeleted.value &&
+    inbox.value?.channel_type === 'Channel::Api' &&
+    isRecent;
+
   return {
+    edit: canEdit,
     copy: hasText,
     delete:
       (hasText || hasAttachments) &&

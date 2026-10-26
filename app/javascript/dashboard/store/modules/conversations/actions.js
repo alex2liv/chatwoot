@@ -491,6 +491,20 @@ const actions = {
     );
   },
 
+  // Metasync: editar mensagem enviada (a edicao vai pro WhatsApp via n8n)
+  editMessageContent: async function editMessageContent(
+    { commit },
+    { conversationId, messageId, content }
+  ) {
+    const { data } = await MessageApi.editContent(
+      conversationId,
+      messageId,
+      content
+    );
+    commit(types.ADD_MESSAGE, data);
+    return data;
+  },
+
   deleteMessage: async function deleteLabels(
     { commit },
     { conversationId, messageId }
