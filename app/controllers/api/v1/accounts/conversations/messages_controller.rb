@@ -46,13 +46,17 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: message.push_event_data
   end
 
-  # Metasync: encaminha a mensagem (texto e/ou anexos) para ate 5 contatos.
-  # Cria uma mensagem de saida na conversa de cada contato (mesma inbox); o fluxo
-  # de saida do n8n entrega no WhatsApp como qualquer mensagem do agente.
+  # Metasync: encaminha a mensagem (texto e/ou anexos) para ate 5 contatos
+  # (na hora) ou para todos os contatos de uma empresa (em fila, com intervalo).
   MAX_FORWARD_CONTACTS = 5
+  MAX_FORWARD_COMPANY_CONTACTS = 30
+  FORWARD_COMPANY_INTERVAL = 4.seconds
+  COMPANY_NAME_SQL = "btrim(contacts.additional_attributes->>'company_name')".freeze
 
   def forward_whatsapp
-    error = forward_error
+    return forward_to_company if params[:company_name].present?
+
+    error = forward_error || ('Escolha pelo menos um contato' if forward_contact_ids.empty?)
     return render json: { error: error }, status: :unprocessable_entity if error
 
     results = forward_contact_ids.map { |contact_id| forward_to_contact(contact_id) }
@@ -60,6 +64,19 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     return render json: { error: results.map { |r| r[:error] }.compact.join(' | '), payload: results }, status: :unprocessable_entity if ok.empty?
 
     render json: { payload: results }
+  end
+
+  def forward_companies
+    scope = forward_reachable_contacts.where("COALESCE(#{COMPANY_NAME_SQL}, '') <> ''")
+    query = params[:q].to_s.strip
+    if query.present?
+      scope = scope.where("#{COMPANY_NAME_SQL} ILIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(query)}%")
+    end
+    rows = scope.group(Arel.sql("lower(#{COMPANY_NAME_SQL})"))
+                .order(Arel.sql('count(*) DESC'))
+                .limit(20)
+                .pluck(Arel.sql("min(#{COMPANY_NAME_SQL})"), Arel.sql('count(*)'))
+    render json: { payload: rows.map { |name, count| { name: name, contacts_count: count } } }
   end
 
   def retry
@@ -122,7 +139,6 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   end
 
   def forward_error
-    return 'Escolha pelo menos um contato' if forward_contact_ids.empty?
     return 'Só é possível encaminhar em canais WhatsApp (API)' unless @conversation.inbox.api?
     return 'Mensagem privada não pode ser encaminhada' if message.private?
     return 'Mensagem apagada não pode ser encaminhada' if message.content_attributes[:deleted]
@@ -131,63 +147,41 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     nil
   end
 
+  def forward_reachable_contacts
+    Current.account.contacts.where("COALESCE(contacts.phone_number, '') <> '' OR COALESCE(contacts.identifier, '') <> ''")
+  end
+
+  def forward_to_company
+    error = forward_error
+    return render json: { error: error }, status: :unprocessable_entity if error
+
+    name = params[:company_name].to_s.strip
+    contact_ids = forward_reachable_contacts
+                  .where("lower(#{COMPANY_NAME_SQL}) = lower(?)", name)
+                  .order(:id).limit(MAX_FORWARD_COMPANY_CONTACTS + 1).pluck(:id)
+    return render json: { error: "Nenhum contato com telefone na empresa #{name}" }, status: :unprocessable_entity if contact_ids.empty?
+    if contact_ids.size > MAX_FORWARD_COMPANY_CONTACTS
+      return render json: { error: "A empresa #{name} tem mais de #{MAX_FORWARD_COMPANY_CONTACTS} contatos. Use o Campaign Manager." },
+                    status: :unprocessable_entity
+    end
+
+    contact_ids.each_with_index do |contact_id, index|
+      Metasync::ForwardMessageJob.set(wait: index * FORWARD_COMPANY_INTERVAL)
+                                 .perform_later(message.id, contact_id, Current.user&.id)
+    end
+    render json: { payload: { company: name, queued: contact_ids.size } }
+  end
+
   def forward_to_contact(contact_id)
     contact = Current.account.contacts.find_by(id: contact_id)
     return { contact_id: contact_id, ok: false, error: "Contato #{contact_id} não encontrado" } unless contact
 
-    conversation = forward_target_conversation(contact, @conversation.inbox)
-    forwarded = build_forwarded_message(conversation)
-    { contact_id: contact.id, ok: true, conversation_id: conversation.display_id, message_id: forwarded.id }
+    forwarded = Metasync::ForwardMessageService.new(message: message, inbox: @conversation.inbox, user: Current.user)
+                                               .perform(contact)
+    { contact_id: contact.id, ok: true, conversation_id: forwarded.conversation.display_id, message_id: forwarded.id }
   rescue StandardError => e
     Rails.logger.error("[forward_whatsapp] contato #{contact_id}: #{e.class} #{e.message}")
     { contact_id: contact_id, ok: false, error: "#{contact&.name || contact_id}: #{e.message}" }
-  end
-
-  # Mesma regra do fluxo de entrada do n8n: usa o contact_inbox e a conversa mais
-  # recente desse contato nessa inbox; reabre se estiver resolvida/pendente.
-  def forward_target_conversation(contact, inbox)
-    contact_inbox = ContactInbox.where(inbox_id: inbox.id, contact_id: contact.id).order(:id).first
-    contact_inbox ||= ContactInbox.create!(contact: contact, inbox: inbox, source_id: forward_source_id(contact))
-
-    conversation = Conversation.where(account_id: inbox.account_id, inbox_id: inbox.id, contact_id: contact.id)
-                               .order(id: :desc).first
-    if conversation
-      conversation.update!(status: :open) if conversation.resolved? || conversation.pending?
-      return conversation
-    end
-
-    Conversation.create!(account_id: inbox.account_id, inbox_id: inbox.id, contact_id: contact.id,
-                         contact_inbox_id: contact_inbox.id, status: :open)
-  end
-
-  def forward_source_id(contact)
-    return contact.identifier if contact.identifier.present?
-
-    digits = contact.phone_number.to_s.gsub(/\D/, '')
-    raise StandardError, 'contato sem telefone' if digits.blank?
-
-    "#{digits}@s.whatsapp.net"
-  end
-
-  def build_forwarded_message(conversation)
-    forwarded = conversation.messages.new(
-      account_id: conversation.account_id,
-      inbox_id: conversation.inbox_id,
-      message_type: :outgoing,
-      sender: Current.user,
-      content: message.content,
-      content_attributes: { 'whatsapp_forwarded_from' => message.id }
-    )
-    message.attachments.each do |att|
-      copy = forwarded.attachments.new(
-        account_id: conversation.account_id, file_type: att.file_type, external_url: att.external_url,
-        fallback_title: att.fallback_title, coordinates_lat: att.coordinates_lat,
-        coordinates_long: att.coordinates_long, meta: att.meta
-      )
-      copy.file = att.file.blob if att.file.attached?
-    end
-    forwarded.save!
-    forwarded
   end
 
   def edit_content_error(new_content)
@@ -208,7 +202,7 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   end
 
   def permitted_params
-    params.permit(:id, :target_language, :status, :external_error, :content)
+    params.permit(:id, :target_language, :status, :external_error, :content, :company_name, :q)
   end
 
   def already_translated_content_available?

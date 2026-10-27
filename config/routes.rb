@@ -197,6 +197,7 @@ Rails.application.routes.draw do
                   post :retry
                   patch :edit_content # Metasync: editar mensagem enviada (WhatsApp)
                   post :forward_whatsapp # Metasync: encaminhar mensagem para outros contatos
+                  get :forward_companies # Metasync: buscar empresas para encaminhar
                 end
               end
               resource :contact_info_request, only: [:show, :create]

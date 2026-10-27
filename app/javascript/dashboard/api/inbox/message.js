@@ -129,6 +129,21 @@ class MessageApi extends ApiClient {
     );
   }
 
+  // Metasync: buscar empresas / encaminhar para todos os contatos de uma empresa
+  forwardCompanies(conversationID, messageId, query) {
+    return axios.get(
+      `${this.url}/${conversationID}/messages/${messageId}/forward_companies`,
+      { params: { q: query } }
+    );
+  }
+
+  forwardToCompany(conversationID, messageId, companyName) {
+    return axios.post(
+      `${this.url}/${conversationID}/messages/${messageId}/forward_whatsapp`,
+      { company_name: companyName }
+    );
+  }
+
   retry(conversationID, messageId) {
     return axios.post(
       `${this.url}/${conversationID}/messages/${messageId}/retry`

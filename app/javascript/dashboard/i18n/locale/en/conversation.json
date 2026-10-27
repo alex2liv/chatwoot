@@ -440,7 +440,15 @@
         "SEND": "Forward ({count})",
         "CANCEL": "Cancel",
         "SUCCESS": "Message forwarded",
-        "ERROR": "Could not forward the message"
+        "ERROR": "Could not forward the message",
+        "TAB_CONTACTS": "Contacts",
+        "TAB_COMPANY": "Whole company",
+        "SEARCH_COMPANY": "Search company",
+        "NO_COMPANY": "No company found. The company comes from the contact's Company field.",
+        "COMPANY_COUNT": "{count} contact(s) with phone",
+        "COMPANY_HINT": "Each of the {count} contacts gets the message privately, a few seconds apart.",
+        "SEND_COMPANY": "Forward to {count}",
+        "COMPANY_SUCCESS": "Forwarding to {count} contact(s) at {company}. This may take a few minutes."
       }
     },
     "SIDEBAR": {

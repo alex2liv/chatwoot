@@ -440,7 +440,15 @@
         "SEND": "Encaminhar ({count})",
         "CANCEL": "Cancelar",
         "SUCCESS": "Mensagem encaminhada",
-        "ERROR": "Não foi possível encaminhar a mensagem"
+        "ERROR": "Não foi possível encaminhar a mensagem",
+        "TAB_CONTACTS": "Contatos",
+        "TAB_COMPANY": "Empresa inteira",
+        "SEARCH_COMPANY": "Buscar empresa",
+        "NO_COMPANY": "Nenhuma empresa encontrada. A empresa vem do campo Empresa do cadastro do contato.",
+        "COMPANY_COUNT": "{count} contato(s) com telefone",
+        "COMPANY_HINT": "Cada um dos {count} contatos recebe a mensagem no privado, com alguns segundos de intervalo entre eles.",
+        "SEND_COMPANY": "Encaminhar para {count}",
+        "COMPANY_SUCCESS": "Encaminhando para {count} contato(s) de {company}. Pode levar alguns minutos."
       }
     },
     "SIDEBAR": {
