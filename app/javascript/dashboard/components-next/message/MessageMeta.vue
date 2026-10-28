@@ -73,7 +73,20 @@ const isSent = computed(() => {
   }
 
   // API inbox messages use real sent/delivered/read status values from the external system.
-  if (isAPIInbox.value) return status.value === MESSAGE_STATUS.SENT;
+  if (isAPIInbox.value) {
+    // Metasync: mensagem enviada pelo Chatwoot que o n8n ainda nao entregou no
+    // WhatsApp (sem ID do WhatsApp e sem ✓✓) mostra o relogio "Enviando" -- ex.:
+    // imagem grande sendo reduzida. Quando o n8n marca "delivered" vira ✓✓.
+    // Depois de 5 min sem resposta volta ao ✓ normal (mensagens antigas, etc.).
+    const ENVIANDO_ATE_SEGUNDOS = 5 * 60;
+    const recente =
+      !!createdAt.value &&
+      Date.now() / 1000 - createdAt.value < ENVIANDO_ATE_SEGUNDOS;
+    if (status.value === MESSAGE_STATUS.SENT && !sourceId.value && recente) {
+      return false;
+    }
+    return status.value === MESSAGE_STATUS.SENT;
+  }
 
   // All messages will be mark as sent for the Line channel, as there is no source ID.
   if (isALineChannel.value) return true;
