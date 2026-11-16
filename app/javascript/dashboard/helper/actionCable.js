@@ -463,6 +463,10 @@ class ActionCableConnector extends BaseActionCableConnector {
         has_unread_mention: isActiveChannel || isOwnMessage ? false : channel.has_unread_mention || isMentioned,
         last_activity_at: data.created_at,
       });
+      DashboardAudioNotificationHelper.onInternalChatMessage({
+        isOwnMessage,
+        isActiveChannel,
+      });
     }
   };
 

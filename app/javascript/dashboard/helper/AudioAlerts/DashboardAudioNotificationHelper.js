@@ -181,6 +181,16 @@ export class DashboardAudioNotificationHelper {
     this.playAudioEvery30Seconds();
   };
 
+  // Chat Interno: toca o som em toda mensagem nova de outra pessoa,
+  // exceto quando o canal ja esta aberto na tela.
+  onInternalChatMessage = ({ isOwnMessage, isActiveChannel }) => {
+    if (isOwnMessage) return;
+    if (isActiveChannel && WindowVisibilityHelper.isWindowVisible()) return;
+    if (!this.audioConfig.audio) this.intializeAudio();
+    this.playAudioAlert();
+    showBadgeOnFavicon();
+  };
+
   onConversationBotHandoff = conversation => {
     // Adapt the handoff once to the existing audio-filter contract. Bot IDs
     // must not be treated as human assignees, even when their IDs overlap.
