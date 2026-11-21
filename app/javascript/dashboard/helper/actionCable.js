@@ -66,6 +66,8 @@ class ActionCableConnector extends BaseActionCableConnector {
       'account.enrichment_completed': this.onEnrichmentCompleted,
       'account.billing_updated': this.onBillingUpdated,
       'copilot.message.created': this.onCopilotMessageCreated,
+      // The store upserts by ID, so an updated approval card replaces the old one.
+      'copilot.message.updated': this.onCopilotMessageCreated,
       'internal_chat.channel.updated': this.onInternalChatChannelUpdated,
       'internal_chat.message.created': this.onInternalChatMessageCreated,
       'internal_chat.message.updated': this.onInternalChatMessageUpdated,
@@ -112,6 +114,10 @@ class ActionCableConnector extends BaseActionCableConnector {
     this.app.$store.dispatch('contacts/updatePresence', data.contacts);
     this.app.$store.dispatch('agents/updatePresence', data.users);
     this.app.$store.dispatch('setCurrentUserAvailability', data.users);
+    this.app.$store.dispatch(
+      'setCurrentUserWorkPreferences',
+      data.work_preferences
+    );
   };
 
   onConversationContactChange = payload => {
@@ -535,11 +541,11 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onVoiceCallIncoming = data => {
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    // Defense in depth: the server already filters to online agent streams,
-    // but if anything ever broadcasts to a broader stream (e.g. account-wide),
-    // an agent who's set availability=offline/busy shouldn't ring.
-    const availability = this.app.$store.getters.getCurrentUserAvailability;
-    if (availability !== 'online') return;
+    // Defense in depth: the server already filters to online agent streams that
+    // take calls, but if anything ever broadcasts to a broader stream (e.g.
+    // account-wide), an agent who is not online or has turned calls off
+    // shouldn't ring.
+    if (!this.app.$store.getters.getCurrentUserReceivesCalls) return;
 
     useCallsStore().addCall({
       callSid: data.call_id,
