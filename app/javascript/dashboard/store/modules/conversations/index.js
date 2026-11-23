@@ -253,6 +253,23 @@ export const mutations = {
 
     const pendingMessageIndex = findPendingMessageIndex(chat, message);
     if (pendingMessageIndex !== -1) {
+      // Metasync: uma copia atrasada da mensagem (ex.: resposta da traducao
+      // automatica) nao pode fazer o status voltar de entregue/lido para
+      // "enviando" na tela. Mantem o status mais avancado ja conhecido.
+      const atual = chat.messages[pendingMessageIndex];
+      const ORDEM = { progress: 0, sent: 1, delivered: 2, read: 3 };
+      if (
+        atual &&
+        atual.id === message.id &&
+        message.status !== 'failed' &&
+        (ORDEM[atual.status] ?? -1) > (ORDEM[message.status] ?? -1)
+      ) {
+        message = {
+          ...message,
+          status: atual.status,
+          source_id: message.source_id || atual.source_id,
+        };
+      }
       chat.messages[pendingMessageIndex] = message;
     } else {
       chat.messages.push(message);
