@@ -198,6 +198,7 @@ Rails.application.routes.draw do
           namespace :channels do
             resource :twilio_channel, only: [:create]
           end
+          resources :metasync_stickers, only: [:index, :create, :destroy] # Metasync: figurinhas salvas
           resources :conversations, only: [:index, :create, :show, :update, :destroy] do
             collection do
               get :meta
@@ -223,6 +224,7 @@ Rails.application.routes.draw do
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
               resource :draft_messages, only: [:show, :update, :destroy]
+              resources :stickers, only: [:create] # Metasync: enviar figurinha salva
               resources :scheduled_messages, only: [:index, :create, :update, :destroy] do # Metasync: agendar mensagens
                 post :send_now, on: :member
               end

@@ -18,6 +18,8 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import ReportCaptainMessageDialog from './ReportCaptainMessageDialog.vue';
 import ContactAPI from 'dashboard/api/contacts';
 import MessageApi from 'dashboard/api/inbox/message';
+import MetasyncStickersApi from 'dashboard/api/metasyncStickers'; // Metasync: figurinhas
+import { emitter } from 'shared/helpers/mitt';
 
 export default {
   components: {
@@ -82,6 +84,7 @@ export default {
       getAccount: 'accounts/getAccount',
       currentAccountId: 'getCurrentAccountId',
       getUISettings: 'getUISettings',
+      currentRole: 'getCurrentRole',
     }),
     plainTextContent() {
       return this.getPlainText(this.messageContent);
@@ -116,6 +119,27 @@ export default {
       );
       useAlert(this.$t('CONVERSATION.CONTEXT_MENU.LINK_COPIED'));
       this.handleClose();
+    },
+    // Metasync: salva a imagem/figurinha da mensagem no botao de figurinhas
+    async saveSticker(scope) {
+      const attachment = (this.message.attachments || []).find(
+        a => (a.fileType || a.file_type) === 'image'
+      );
+      this.handleClose();
+      if (!attachment) return;
+      try {
+        await MetasyncStickersApi.saveFromAttachment(attachment.id, scope);
+        useAlert(
+          scope === 'company'
+            ? 'Figurinha salva para toda a empresa.'
+            : 'Figurinha salva nas suas figurinhas.'
+        );
+        emitter.emit('metasync:stickers-changed');
+      } catch (error) {
+        useAlert(
+          error?.response?.data?.error || 'Não foi possível salvar a figurinha.'
+        );
+      }
     },
     async handleCopy() {
       await copyTextToClipboard(this.plainTextContent);
@@ -162,7 +186,8 @@ export default {
     },
     openEditModal() {
       this.handleClose();
-      this.editText = this.message.original_content ?? this.messageContent ?? '';
+      this.editText =
+        this.message.original_content ?? this.messageContent ?? '';
       this.showEditModal = true;
     },
     closeEditModal() {
@@ -252,15 +277,21 @@ export default {
         );
         const payload = (data && data.payload) || {};
         useAlert(
-          this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.COMPANY_SUCCESS', {
-            count: payload.queued || 0,
-            company: payload.company || this.forwardCompany.name,
-          })
+          this.$t(
+            'CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.COMPANY_SUCCESS',
+            {
+              count: payload.queued || 0,
+              company: payload.company || this.forwardCompany.name,
+            }
+          )
         );
         this.closeForwardModal();
       } catch (error) {
         useAlert(
-          (error && error.response && error.response.data && error.response.data.error) ||
+          (error &&
+            error.response &&
+            error.response.data &&
+            error.response.data.error) ||
             this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.ERROR')
         );
       } finally {
@@ -285,7 +316,10 @@ export default {
         this.forwardResults = [];
         return;
       }
-      this.forwardSearchTimer = setTimeout(() => this.searchForward(query), 300);
+      this.forwardSearchTimer = setTimeout(
+        () => this.searchForward(query),
+        300
+      );
     },
     async searchForward(query) {
       this.forwardSearchSeq += 1;
@@ -334,12 +368,17 @@ export default {
         if (failed.length) {
           useAlert(failed.map(r => r.error).join(' | '));
         } else {
-          useAlert(this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.SUCCESS'));
+          useAlert(
+            this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.SUCCESS')
+          );
         }
         this.closeForwardModal();
       } catch (error) {
         useAlert(
-          (error && error.response && error.response.data && error.response.data.error) ||
+          (error &&
+            error.response &&
+            error.response.data &&
+            error.response.data.error) ||
             this.$t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.ERROR')
         );
       } finally {
@@ -502,9 +541,12 @@ export default {
                 </span>
                 <span class="text-xs text-n-slate-11">
                   {{
-                    $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.COMPANY_COUNT', {
-                      count: company.contacts_count,
-                    })
+                    $t(
+                      'CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.COMPANY_COUNT',
+                      {
+                        count: company.contacts_count,
+                      }
+                    )
                   }}
                 </span>
               </span>
@@ -546,10 +588,7 @@ export default {
           v-if="forwardMode === 'contacts'"
           class="flex flex-col overflow-y-auto rounded-lg max-h-64 outline outline-1 outline-n-weak"
         >
-          <p
-            v-if="isSearchingForward"
-            class="p-3 text-sm text-n-slate-11"
-          >
+          <p v-if="isSearchingForward" class="p-3 text-sm text-n-slate-11">
             {{ $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.SEARCHING') }}
           </p>
           <p
@@ -559,26 +598,26 @@ export default {
             {{ $t('CONVERSATION.CONTEXT_MENU.FORWARD_WHATSAPP.HINT') }}
           </p>
           <template v-else>
-          <button
-            v-for="contact in forwardResults"
-            :key="contact.id"
-            type="button"
-            class="flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-n-alpha-2"
-            :class="{ 'bg-n-alpha-2': isForwardSelected(contact) }"
-            @click="toggleForwardContact(contact)"
-          >
-            <span class="flex flex-col min-w-0">
-              <span class="text-sm truncate text-n-slate-12">
-                {{ contact.name }}
+            <button
+              v-for="contact in forwardResults"
+              :key="contact.id"
+              type="button"
+              class="flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-n-alpha-2"
+              :class="{ 'bg-n-alpha-2': isForwardSelected(contact) }"
+              @click="toggleForwardContact(contact)"
+            >
+              <span class="flex flex-col min-w-0">
+                <span class="text-sm truncate text-n-slate-12">
+                  {{ contact.name }}
+                </span>
+                <span class="text-xs truncate text-n-slate-11">
+                  {{ forwardContactLine(contact) }}
+                </span>
               </span>
-              <span class="text-xs truncate text-n-slate-11">
-                {{ forwardContactLine(contact) }}
+              <span v-if="isForwardSelected(contact)" class="text-n-brand">
+                ✓
               </span>
-            </span>
-            <span v-if="isForwardSelected(contact)" class="text-n-brand">
-              ✓
-            </span>
-          </button>
+            </button>
           </template>
         </div>
         <div class="flex justify-end gap-2">
@@ -661,6 +700,26 @@ export default {
           }"
           variant="icon"
           @click.stop="openEditModal"
+        />
+        <MenuItem
+          v-if="enabledOptions['saveSticker']"
+          :option="{
+            icon: 'emoji-add-outline',
+            label: 'Salvar nas minhas figurinhas',
+          }"
+          variant="icon"
+          @click.stop="saveSticker('mine')"
+        />
+        <MenuItem
+          v-if="
+            enabledOptions['saveSticker'] && currentRole === 'administrator'
+          "
+          :option="{
+            icon: 'star-emphasis-outline',
+            label: 'Salvar nas figurinhas da empresa',
+          }"
+          variant="icon"
+          @click.stop="saveSticker('company')"
         />
         <MenuItem
           v-if="enabledOptions['forwardWhatsapp']"

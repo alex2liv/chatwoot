@@ -18,6 +18,7 @@ import MessageSignatureMissingAlert from './MessageSignatureMissingAlert.vue';
 import ReplyBoxBanner from './ReplyBoxBanner.vue';
 import ScheduledMessagesBar from './ScheduledMessagesBar.vue'; // Metasync: mensagens agendadas
 import ScheduledMessagesApi from 'dashboard/api/inbox/scheduledMessages';
+import MetasyncStickersApi from 'dashboard/api/metasyncStickers'; // Metasync: figurinhas
 import QuotedEmailPreview from './QuotedEmailPreview.vue';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
@@ -880,6 +881,17 @@ export default {
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
     },
+    // Metasync: envia uma figurinha salva para o cliente.
+    async sendSticker(stickerId) {
+      if (this.isPrivate || !this.conversationId) return;
+      try {
+        await MetasyncStickersApi.send(this.conversationId, stickerId);
+      } catch (error) {
+        useAlert(
+          error?.response?.data?.error || 'Não foi possível enviar a figurinha.'
+        );
+      }
+    },
     // Metasync: agenda o texto da caixa para ser enviado no horario escolhido.
     async scheduleReply(scheduledAt) {
       if (this.isPrivate) return;
@@ -1618,6 +1630,7 @@ export default {
         @toggle-insert-article="toggleInsertArticle"
         @request-contact-info-template="openContactInfoTemplateModal"
         @schedule-message="scheduleReply"
+        @send-sticker="sendSticker"
       />
     </Transition>
 

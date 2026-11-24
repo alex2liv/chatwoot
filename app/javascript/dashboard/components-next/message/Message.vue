@@ -416,6 +416,7 @@ const payloadForContextMenu = computed(() => {
     content: displayedContent.value,
     original_content: props.content,
     conversation_id: props.conversationId,
+    attachments: props.attachments, // Metasync: salvar figurinha
   };
 });
 
@@ -452,8 +453,19 @@ const contextMenuEnabledOptions = computed(() => {
     !isMessageDeleted.value &&
     inbox.value?.channel_type === 'Channel::Api';
 
+  // Metasync: salvar figurinha/imagem no botao de figurinhas
+  const canSaveSticker =
+    !props.private &&
+    !isMessageDeleted.value &&
+    (props.attachments || []).some(
+      a =>
+        a.fileType === ATTACHMENT_TYPES.IMAGE &&
+        Number(a.fileSize || 0) <= 1048576
+    );
+
   return {
     edit: canEdit,
+    saveSticker: canSaveSticker,
     forwardWhatsapp: canForwardWhatsapp,
     copy: hasText,
     delete:

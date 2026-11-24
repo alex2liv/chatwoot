@@ -13,6 +13,7 @@ import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { mapGetters } from 'vuex';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import ScheduleSendButton from './ScheduleSendButton.vue'; // Metasync: agendar envio
+import StickerPickerButton from './StickerPickerButton.vue'; // Metasync: figurinhas
 
 export default {
   name: 'ReplyBottomPanel',
@@ -22,6 +23,7 @@ export default {
     VideoCallButton,
     RequestContactInfoButton,
     ScheduleSendButton,
+    StickerPickerButton,
   },
   mixins: [inboxMixin],
   props: {
@@ -132,6 +134,7 @@ export default {
     'selectContentTemplate',
     'requestContactInfoTemplate',
     'scheduleMessage',
+    'sendSticker',
   ],
   setup(props) {
     const { setSignatureFlagForInbox, fetchSignatureFlagFromUISettings } =
@@ -387,6 +390,11 @@ export default {
       />
     </div>
     <div class="right-wrap">
+      <StickerPickerButton
+        v-if="!isNote"
+        class="mr-2"
+        @send="id => $emit('sendSticker', id)"
+      />
       <ScheduleSendButton
         v-if="!isNote"
         :disabled="isSendDisabled"
