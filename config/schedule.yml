@@ -92,3 +92,9 @@ remove_orphan_conversations_job:
   cron: '0 */12 * * *'
   class: 'Internal::RemoveOrphanConversationsJob'
   queue: housekeeping
+
+# Metasync: envia mensagens agendadas (a cada minuto)
+metasync_dispatch_scheduled_messages_job:
+  cron: '* * * * *'
+  class: 'Metasync::DispatchScheduledMessagesJob'
+  queue: scheduled_jobs

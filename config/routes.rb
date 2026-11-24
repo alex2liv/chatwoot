@@ -223,6 +223,9 @@ Rails.application.routes.draw do
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
               resource :draft_messages, only: [:show, :update, :destroy]
+              resources :scheduled_messages, only: [:index, :create, :update, :destroy] do # Metasync: agendar mensagens
+                post :send_now, on: :member
+              end
               resource :suggestions, only: [] do
                 get :labels
                 get :priority

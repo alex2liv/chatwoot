@@ -12,6 +12,7 @@ import RequestContactInfoButton from '../RequestContactInfoButton.vue';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { mapGetters } from 'vuex';
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import ScheduleSendButton from './ScheduleSendButton.vue'; // Metasync: agendar envio
 
 export default {
   name: 'ReplyBottomPanel',
@@ -20,6 +21,7 @@ export default {
     FileUpload,
     VideoCallButton,
     RequestContactInfoButton,
+    ScheduleSendButton,
   },
   mixins: [inboxMixin],
   props: {
@@ -129,6 +131,7 @@ export default {
     'selectWhatsappTemplate',
     'selectContentTemplate',
     'requestContactInfoTemplate',
+    'scheduleMessage',
   ],
   setup(props) {
     const { setSignatureFlagForInbox, fetchSignatureFlagFromUISettings } =
@@ -384,6 +387,12 @@ export default {
       />
     </div>
     <div class="right-wrap">
+      <ScheduleSendButton
+        v-if="!isNote"
+        :disabled="isSendDisabled"
+        class="mr-2"
+        @schedule="ts => $emit('scheduleMessage', ts)"
+      />
       <NextButton
         :label="sendButtonText"
         type="submit"

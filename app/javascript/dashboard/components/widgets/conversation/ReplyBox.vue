@@ -16,6 +16,8 @@ import ArticleSearchPopover from 'dashboard/routes/dashboard/helpcenter/componen
 import CopilotEditorSection from './CopilotEditorSection.vue';
 import MessageSignatureMissingAlert from './MessageSignatureMissingAlert.vue';
 import ReplyBoxBanner from './ReplyBoxBanner.vue';
+import ScheduledMessagesBar from './ScheduledMessagesBar.vue'; // Metasync: mensagens agendadas
+import ScheduledMessagesApi from 'dashboard/api/inbox/scheduledMessages';
 import QuotedEmailPreview from './QuotedEmailPreview.vue';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
@@ -72,6 +74,7 @@ export default {
     AttachmentPreview,
     AudioRecorder,
     ReplyBoxBanner,
+    ScheduledMessagesBar,
     EmojiIconPicker,
     MessageSignatureMissingAlert,
     ReplyBottomPanel,
@@ -877,6 +880,46 @@ export default {
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
     },
+    // Metasync: agenda o texto da caixa para ser enviado no horario escolhido.
+    async scheduleReply(scheduledAt) {
+      if (this.isPrivate) return;
+      if (this.attachedFiles.length) {
+        useAlert(
+          'Por enquanto o agendamento aceita só texto. Remova o anexo para agendar.'
+        );
+        return;
+      }
+      if (this.isReplyButtonDisabled || !this.message.trim()) {
+        useAlert('Escreva a mensagem antes de agendar.');
+        return;
+      }
+      if (scheduledAt < Date.now() - 60000) {
+        useAlert('Escolha um horário no futuro.');
+        return;
+      }
+      const { message: content } = this.getMessagePayload(this.message);
+      try {
+        await ScheduledMessagesApi.create(this.conversationId, {
+          content,
+          scheduledAt,
+        });
+        const when = new Date(scheduledAt).toLocaleString('pt-BR', {
+          weekday: 'short',
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        useAlert(`Mensagem agendada para ${when}.`);
+        this.clearMessage();
+        this.hideEmojiPicker();
+        emitter.emit('metasync:scheduled-messages-changed');
+      } catch (error) {
+        useAlert(
+          error?.response?.data?.error || 'Não foi possível agendar a mensagem.'
+        );
+      }
+    },
     confirmOnSendReply() {
       if (this.isReplyButtonDisabled) {
         return;
@@ -1379,6 +1422,7 @@ export default {
 
 <template>
   <ReplyBoxBanner :message="message" :is-on-private-note="isOnPrivateNote" />
+  <ScheduledMessagesBar :conversation-id="conversationId" />
   <div class="reply-box" :class="replyBoxClass">
     <ReplyTopPanel
       :mode="replyType"
@@ -1573,6 +1617,7 @@ export default {
         @select-content-template="openContentTemplateModal"
         @toggle-insert-article="toggleInsertArticle"
         @request-contact-info-template="openContactInfoTemplateModal"
+        @schedule-message="scheduleReply"
       />
     </Transition>
 
