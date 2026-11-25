@@ -18,7 +18,13 @@ import {
   SNOOZE_EVENTS,
 } from 'dashboard/helper/AnalyticsHelper/events';
 import { generateSnoozeSuggestions } from 'dashboard/helper/snoozeHelpers';
-import { ICON_SNOOZE_CONVERSATION } from 'dashboard/helper/commandbar/icons';
+import {
+  ICON_SNOOZE_CONVERSATION,
+  ICON_SQUARE_USER,
+} from 'dashboard/helper/commandbar/icons';
+import { useRouter } from 'vue-router';
+import ContactAPI from 'dashboard/api/contacts';
+import { frontendURL } from 'dashboard/helper/URLHelper';
 import {
   CMD_SNOOZE_CONVERSATION,
   CMD_SNOOZE_NOTIFICATION,
@@ -38,6 +44,65 @@ const { t, tm } = useI18n();
 const { resolvedLocale } = useLocale();
 
 const ninjakeys = ref(null);
+const router = useRouter();
+
+// Metasync: digitar o nome no Ctrl+K mostra os contatos e abre direto a conversa
+const contactActions = ref([]);
+let contactTimer = null;
+let contactController = null;
+
+const openContactConversation = async contact => {
+  const accountId = store.getters.getCurrentAccountId;
+  try {
+    const { data } = await ContactAPI.getConversations(contact.id);
+    const list = (data.payload || [])
+      .slice()
+      .sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0));
+    const conv =
+      list.find(c => c.status === 'open' || c.status === 'pending') || list[0];
+    if (conv) {
+      await router.push(
+        frontendURL(`accounts/${accountId}/conversations/${conv.id}`)
+      );
+      setTimeout(() => emitter.emit('metasync:focus-reply'), 400);
+      return;
+    }
+  } catch {
+    // sem conversa: abre o contato
+  }
+  router.push(frontendURL(`accounts/${accountId}/contacts/${contact.id}`));
+};
+
+const searchContacts = term => {
+  clearTimeout(contactTimer);
+  if (term.length < 2) {
+    contactActions.value = [];
+    return;
+  }
+  contactTimer = setTimeout(async () => {
+    if (contactController) contactController.abort();
+    contactController = new AbortController();
+    try {
+      const { data } = await ContactAPI.search(
+        term,
+        1,
+        '-last_activity_at',
+        '',
+        { signal: contactController.signal }
+      );
+      contactActions.value = (data.payload || []).slice(0, 8).map(c => ({
+        id: `metasync_contact_${c.id}`,
+        title: c.phone_number ? `${c.name} · ${c.phone_number}` : c.name,
+        section: 'Contatos',
+        icon: ICON_SQUARE_USER,
+        keywords: `${term} ${c.name || ''} ${c.phone_number || ''}`,
+        handler: () => openContactConversation(c),
+      }));
+    } catch {
+      // busca cancelada ou erro: mantem a lista anterior
+    }
+  }, 250);
+};
 const resolveAttributesModalRef = ref(null);
 
 // Added selectedSnoozeType to track the selected snooze type
@@ -94,6 +159,7 @@ const hotKeys = computed(() => {
   }
 
   const allActions = [
+    ...contactActions.value,
     ...dynamicSnoozeActions.value,
     ...inboxHotKeys.value,
     ...goToCommandHotKeys.value,
@@ -161,6 +227,7 @@ const buildDynamicSnoozeActions = (search, parentId) => {
 const resetSnoozeState = () => {
   currentCommandRoot.value = null;
   dynamicSnoozeActions.value = [];
+  contactActions.value = [];
 };
 
 const patchNinjaKeysOpenClose = el => {
@@ -204,6 +271,7 @@ const onSelected = item => {
 const onCommandBarChange = item => {
   const { detail: { search = '', actions = [] } = {} } = item;
   const normalizedSearch = search.trim();
+  if (!currentCommandRoot.value) searchContacts(normalizedSearch);
 
   if (actions.length > 0) {
     const uniqueParents = [

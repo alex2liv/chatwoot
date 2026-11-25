@@ -654,6 +654,7 @@ export default {
       this.onNewConversationModalActive
     );
     emitter.on(CMD_AI_ASSIST, this.executeCopilotAction);
+    emitter.on('metasync:focus-reply', this.focusReplyFromSwitcher);
     emitter.on(
       BUS_EVENTS.INSERT_INTO_RICH_EDITOR,
       this.onInsertWhileCopilotActive
@@ -667,6 +668,7 @@ export default {
       this.onNewConversationModalActive
     );
     emitter.off(CMD_AI_ASSIST, this.executeCopilotAction);
+    emitter.off('metasync:focus-reply', this.focusReplyFromSwitcher);
     emitter.off(
       BUS_EVENTS.INSERT_INTO_RICH_EDITOR,
       this.onInsertWhileCopilotActive
@@ -885,6 +887,10 @@ export default {
     },
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
+    },
+    // Metasync: Alt+G abre a conversa ja com o cursor na caixa de resposta.
+    focusReplyFromSwitcher() {
+      this.messageEditor?.focusEditorInputField();
     },
     // Metasync: escolher a figurinha so prepara o envio; ela sai no Enter/Enviar.
     sendSticker(sticker) {
