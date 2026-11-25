@@ -20,7 +20,10 @@ const TXT = {
     'Nenhuma figurinha salva ainda. Clique com o botão direito numa figurinha ou imagem da conversa e escolha "Salvar nas minhas figurinhas".',
   emptyCompany:
     'A empresa ainda não tem figurinhas. Um administrador pode salvar clicando com o botão direito numa figurinha da conversa.',
-  remove: 'Remover figurinha',
+  remove: 'Apagar figurinha',
+  manage: 'Organizar',
+  done: 'Pronto',
+  manageHint: 'Clique na lixeira para apagar as figurinhas que não quer mais.',
   removed: 'Figurinha removida.',
   removeError: 'Não foi possível remover.',
   loadError: 'Não foi possível carregar as figurinhas.',
@@ -28,6 +31,7 @@ const TXT = {
 
 const open = ref(false);
 const tab = ref('mine');
+const managing = ref(false);
 const loading = ref(false);
 const data = ref({
   mine: [],
@@ -63,10 +67,12 @@ useEmitter('metasync:stickers-changed', () => {
 const toggle = () => {
   if (props.disabled) return;
   open.value = !open.value;
+  managing.value = false;
   if (open.value) fetchStickers();
 };
 
 const choose = sticker => {
+  if (managing.value) return;
   open.value = false;
   emit('send', { id: sticker.id, url: sticker.url });
 };
@@ -75,7 +81,8 @@ const removeSticker = async sticker => {
   try {
     await MetasyncStickersApi.remove(sticker.id);
     useAlert(TXT.removed);
-    fetchStickers();
+    await fetchStickers();
+    if (!items.value.length) managing.value = false;
   } catch {
     useAlert(TXT.removeError);
   }
@@ -115,7 +122,23 @@ const removeSticker = async sticker => {
           {{ TXT[key] }}
         </button>
         <span class="ml-auto text-xs text-n-slate-11">{{ counter }}</span>
+        <button
+          v-if="canRemove && items.length"
+          type="button"
+          class="rounded-lg px-2 py-1 text-xs"
+          :class="
+            managing
+              ? 'bg-n-ruby-9 text-white'
+              : 'text-n-slate-11 hover:bg-n-alpha-1'
+          "
+          @click="managing = !managing"
+        >
+          {{ managing ? TXT.done : TXT.manage }}
+        </button>
       </div>
+      <p v-if="managing" class="mb-2 text-xs text-n-slate-11">
+        {{ TXT.manageHint }}
+      </p>
       <div
         v-if="!loading && !items.length"
         class="px-1 py-4 text-center text-xs text-n-slate-11"
@@ -131,6 +154,7 @@ const removeSticker = async sticker => {
           <button
             type="button"
             class="size-full rounded-lg p-1 hover:bg-n-alpha-2"
+            :class="{ 'opacity-60': managing }"
             @click="choose(sticker)"
           >
             <img
@@ -144,10 +168,11 @@ const removeSticker = async sticker => {
             v-if="canRemove"
             v-tooltip.top="TXT.remove"
             type="button"
-            class="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full bg-n-ruby-9 text-white group-hover:flex"
+            class="absolute right-1 top-1 size-6 items-center justify-center rounded-full bg-n-ruby-9 text-white shadow"
+            :class="managing ? 'flex' : 'hidden group-hover:flex'"
             @click.stop="removeSticker(sticker)"
           >
-            <span class="i-lucide-x size-3" />
+            <span class="i-lucide-trash-2 size-3.5" />
           </button>
         </div>
       </div>
