@@ -393,7 +393,7 @@ export default {
       <StickerPickerButton
         v-if="!isNote"
         class="mr-2"
-        @send="id => $emit('sendSticker', id)"
+        @send="sticker => $emit('sendSticker', sticker)"
       />
       <ScheduleSendButton
         v-if="!isNote"

@@ -68,7 +68,7 @@ const toggle = () => {
 
 const choose = sticker => {
   open.value = false;
-  emit('send', sticker.id);
+  emit('send', { id: sticker.id, url: sticker.url });
 };
 
 const removeSticker = async sticker => {

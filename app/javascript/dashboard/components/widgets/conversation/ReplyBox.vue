@@ -19,6 +19,7 @@ import ReplyBoxBanner from './ReplyBoxBanner.vue';
 import ScheduledMessagesBar from './ScheduledMessagesBar.vue'; // Metasync: mensagens agendadas
 import ScheduledMessagesApi from 'dashboard/api/inbox/scheduledMessages';
 import MetasyncStickersApi from 'dashboard/api/metasyncStickers'; // Metasync: figurinhas
+import NextButton from 'dashboard/components-next/button/Button.vue';
 import QuotedEmailPreview from './QuotedEmailPreview.vue';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
@@ -76,6 +77,7 @@ export default {
     AudioRecorder,
     ReplyBoxBanner,
     ScheduledMessagesBar,
+    NextButton,
     EmojiIconPicker,
     MessageSignatureMissingAlert,
     ReplyBottomPanel,
@@ -170,6 +172,7 @@ export default {
   data() {
     return {
       message: '',
+      pendingSticker: null, // Metasync: figurinha escolhida, sai quando apertar Enter
       inReplyTo: {},
       isFocused: false,
       showEmojiPicker: false,
@@ -337,6 +340,7 @@ export default {
     isReplyButtonDisabled() {
       if (this.isEditorDisabled) return true;
       if (this.isATwitterInbox) return true;
+      if (this.pendingSticker && !this.isPrivate) return false; // Metasync: figurinha
       if (this.hasAttachments || this.hasRecordedAudio) return false;
 
       return (
@@ -548,6 +552,7 @@ export default {
   watch: {
     currentChat(conversation, oldConversation) {
       if (oldConversation && oldConversation.id !== conversation.id) {
+        this.pendingSticker = null; // Metasync: figurinha nao passa de uma conversa para outra
         // Only update email fields when switching to a completely different conversation (by ID)
         // This prevents overwriting user input (e.g., CC/BCC fields) when performing actions
         // like self-assign or other updates that do not actually change the conversation context
@@ -881,11 +886,18 @@ export default {
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
     },
-    // Metasync: envia uma figurinha salva para o cliente.
-    async sendSticker(stickerId) {
-      if (this.isPrivate || !this.conversationId) return;
+    // Metasync: escolher a figurinha so prepara o envio; ela sai no Enter/Enviar.
+    sendSticker(sticker) {
+      if (this.isPrivate || !this.conversationId || !sticker) return;
+      this.pendingSticker = sticker;
+      this.$nextTick(() => this.messageEditor?.focusEditorInputField());
+    },
+    async dispatchPendingSticker() {
+      const sticker = this.pendingSticker;
+      this.pendingSticker = null;
+      if (!sticker) return;
       try {
-        await MetasyncStickersApi.send(this.conversationId, stickerId);
+        await MetasyncStickersApi.send(this.conversationId, sticker.id);
       } catch (error) {
         useAlert(
           error?.response?.data?.error || 'Não foi possível enviar a figurinha.'
@@ -935,6 +947,17 @@ export default {
     confirmOnSendReply() {
       if (this.isReplyButtonDisabled) {
         return;
+      }
+      // Metasync: figurinha escolhida sai primeiro; se nao houver texto/anexo, para aqui.
+      if (this.pendingSticker && !this.isPrivate) {
+        this.dispatchPendingSticker();
+        if (
+          (this.isMessageEmpty || !this.message.trim()) &&
+          !this.hasAttachments &&
+          !this.hasRecordedAudio
+        ) {
+          return;
+        }
       }
       if (!this.showMentions) {
         const copilotAcceptedMessage = this.getCopilotAcceptedMessage();
@@ -1559,6 +1582,27 @@ export default {
           </template>
         </WootMessageEditor>
 
+        <div
+          v-if="pendingSticker && !isPrivate"
+          class="mb-2 mt-2 flex items-center gap-3 rounded-lg bg-n-alpha-1 p-2"
+        >
+          <img
+            :src="pendingSticker.url"
+            alt=""
+            class="size-16 object-contain"
+          />
+          <span class="flex-1 text-sm text-n-slate-11">{{
+            'Figurinha pronta. Aperte Enter para enviar.'
+          }}</span>
+          <NextButton
+            v-tooltip.top="'Remover figurinha'"
+            icon="i-lucide-x"
+            xs
+            slate
+            faded
+            @click="pendingSticker = null"
+          />
+        </div>
         <div
           v-if="hasAttachments && isDefaultEditorMode"
           class="bg-transparent py-0 mb-2"
