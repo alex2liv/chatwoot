@@ -50,6 +50,10 @@ class Internal::ReconcilePlanConfigService
   end
 
   def reconcile_premium_features
+    # Metasync: nao desliga as funcoes premium das contas (instalacao propria).
+    # O Chatwoot desligava todo dia e o Captain/transcricao ficavam fora ate o cron religar.
+    return if ENV.fetch('METASYNC_KEEP_PREMIUM_FEATURES', 'true') == 'true'
+
     Account.find_in_batches do |accounts|
       accounts.each do |account|
         account.disable_features!(*premium_features)
