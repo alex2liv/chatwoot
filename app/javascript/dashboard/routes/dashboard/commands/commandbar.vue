@@ -24,6 +24,7 @@ import {
 } from 'dashboard/helper/commandbar/icons';
 import { useRouter } from 'vue-router';
 import ContactAPI from 'dashboard/api/contacts';
+import ConversationAPI from 'dashboard/api/inbox/conversation';
 import { frontendURL } from 'dashboard/helper/URLHelper';
 import {
   CMD_SNOOZE_CONVERSATION,
@@ -61,6 +62,17 @@ const openContactConversation = async contact => {
     const conv =
       list.find(c => c.status === 'open' || c.status === 'pending') || list[0];
     if (conv) {
+      // Metasync: conversa resolvida ou adiada volta a ficar aberta ao escolher pelo Ctrl+K (pendente da IA nao mexe)
+      if (conv.status === 'resolved' || conv.status === 'snoozed') {
+        try {
+          await ConversationAPI.toggleStatus({
+            conversationId: conv.id,
+            status: 'open',
+          });
+        } catch {
+          // se nao conseguir reabrir, abre a conversa mesmo assim
+        }
+      }
       await router.push(
         frontendURL(`accounts/${accountId}/conversations/${conv.id}`)
       );
