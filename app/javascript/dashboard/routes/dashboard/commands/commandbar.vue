@@ -283,7 +283,7 @@ const onSelected = item => {
 const onCommandBarChange = item => {
   const { detail: { search = '', actions = [] } = {} } = item;
   const normalizedSearch = search.trim();
-  if (!currentCommandRoot.value) searchContacts(normalizedSearch);
+  searchContacts(normalizedSearch); // Metasync: contatos so aparecem na raiz do Ctrl+K (sem parent)
 
   if (actions.length > 0) {
     const uniqueParents = [
