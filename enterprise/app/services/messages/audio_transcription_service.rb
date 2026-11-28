@@ -28,10 +28,16 @@ class Messages::AudioTranscriptionService
 
   def transcription_skip_reason
     return 'Message not found' if message.blank?
+    # Metasync: som de figurinha (audio sticker) e para ouvir, nao transcrever
+    return 'Audio sticker sound' if metasync_sticker_sound?
     return 'Transcription disabled for this inbox' if call_recording_transcription_disabled?
     return 'Transcription limit exceeded' unless Llm::SpeechToTextService.available_for?(account)
 
     'Audio too large for transcription' if Llm::SpeechToTextService.too_large?(attachment.file&.blob)
+  end
+
+  def metasync_sticker_sound?
+    attachment.file.attached? && attachment.file.filename.to_s.start_with?('som-da-figurinha')
   end
 
   # Call recordings honour the inbox's "Transcribe recordings" setting; ordinary voice notes don't.
